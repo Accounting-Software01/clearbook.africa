@@ -106,12 +106,32 @@ export default {
             opacity: '0',
           },
         },
+        'spin-slow': {
+          '0%': { transform: 'rotate(0deg)' },
+          '100%': { transform: 'rotate(360deg)' },
+        },
+        'spin-medium': {
+          '0%': { transform: 'rotate(0deg)' },
+          '100%': { transform: 'rotate(-360deg)' },
+        },
+        'spin-fast': {
+          '0%': { transform: 'rotate(0deg)' },
+          '100%': { transform: 'rotate(360deg)' },
+        },
+        'spin-countries': {
+            '0%': { transform: 'rotate(0deg)' },
+            '100%': { transform: 'rotate(360deg)' },
+        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
         'zoom-in-fade': 'zoom-in-fade 0.3s ease-out',
         'zoom-out-fade': 'zoom-out-fade 0.3s ease-out forwards',
+        'spin-slow': 'spin-slow 60s linear infinite',
+        'spin-medium': 'spin-medium 40s linear infinite',
+        'spin-fast': 'spin-fast 20s linear infinite',
+        'spin-countries': 'spin-countries 120s linear infinite',
       },
     },
   },

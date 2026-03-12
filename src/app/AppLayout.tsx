@@ -42,13 +42,14 @@ export default function AppLayout({
     const { user, isLoading, logout } = useAuth();
     const [isCardCollapsed, setIsCardCollapsed] = useState(false);
 
-    const isAuthPage = pathname === '/login' || pathname === '/signup';
-
+    // Treat landing, login, and signup pages as public
+    const isPublicPage = pathname === '/' || pathname === '/login' || pathname === '/contact' || pathname === '/free-trial';
     useEffect(() => {
-        if (user && isAuthPage) {
+        // If a logged-in user lands on login/signup, redirect to dashboard
+        if (user && (pathname === '/login' || pathname === '/contact' || pathname === '/free-trial')) {
             router.replace('/dashboard');
         }
-    }, [user, isAuthPage, router]);
+    }, [user, pathname, router]);
 
 
     if (isLoading) {
@@ -59,12 +60,13 @@ export default function AppLayout({
         );
     }
 
-    if (!user && !isAuthPage) {
+    // If not logged in and not on a public page, show session expired
+    if (!user && !isPublicPage) {
         return <SessionExpired />;
     }
 
-
-    if (isAuthPage) {
+    // For public pages, render the children directly without the app shell
+    if (isPublicPage) {
         return <>{children}</>;
     }
     

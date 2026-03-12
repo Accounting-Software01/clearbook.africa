@@ -2,9 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
+
+/* ===== BASE TYPOGRAPHY ===== */
+
 body {
   font-family: 'Inter', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
+
+
+/* ===== THEME VARIABLES ===== */
 
 @layer base {
   :root {
@@ -46,14 +54,35 @@ body {
   }
 }
 
+
+/* ===== GLOBAL STYLES ===== */
+
 @layer base {
+
   * {
     @apply border-border;
   }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
     @apply bg-background text-foreground;
   }
+
 }
+
+
+/* ===== TEXT SELECTION STYLE ===== */
+
+::selection {
+  background-color: #10b981;
+  color: white;
+}
+
+
+/* ===== DOT ORBIT ANIMATION ===== */
 
 @keyframes rotate-dot {
   from {
@@ -69,29 +98,74 @@ body {
   position: absolute;
   width: 8px;
   height: 8px;
-  background-color: #10b981; /* green-500 */
+  background-color: #10b981;
   border-radius: 50%;
   top: 50%;
   left: 50%;
-  margin-top: -4px; 
+  margin-top: -4px;
   margin-left: -4px;
   animation: rotate-dot 4s linear infinite;
 }
 
+
+
+/* ===== GLOBE ANIMATIONS ===== */
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes spin-medium {
+  from { transform: rotate(360deg); }
+  to { transform: rotate(0deg); }
+}
+
+@keyframes spin-fast {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes spin-countries {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(-360deg); }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 60s linear infinite;
+  will-change: transform;
+}
+
+.animate-spin-medium {
+  animation: spin-medium 45s linear infinite;
+  will-change: transform;
+}
+
+.animate-spin-fast {
+  animation: spin-fast 30s linear infinite;
+  will-change: transform;
+}
+
+.animate-spin-countries {
+  animation: spin-countries 120s linear infinite;
+  will-change: transform;
+}
+
+
+
 /* ===== PRINT FIX FOR INVOICE ===== */
+
 @media print {
-  /* Hide EVERYTHING by default */
+
   body * {
     visibility: hidden;
   }
 
-  /* Show only invoice */
   #invoice-print,
   #invoice-print * {
     visibility: visible;
   }
 
-  /* Position invoice at top-left */
   #invoice-print {
     position: absolute;
     left: 0;
@@ -100,9 +174,9 @@ body {
     padding: 8mm;
   }
 
-  /* Kill sidebar width influence */
   aside,
   nav {
     display: none !important;
   }
+
 }

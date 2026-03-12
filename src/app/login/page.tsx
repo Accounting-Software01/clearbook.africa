@@ -23,7 +23,7 @@ export default function LoginPage() {
   // Get reCAPTCHA site key from environment variables
   const RECAPTCHA_SITE_KEY =
     process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY ||
-    '6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI'; // Test key
+    '6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI';
 
   // Log if site key is missing
   useEffect(() => {
