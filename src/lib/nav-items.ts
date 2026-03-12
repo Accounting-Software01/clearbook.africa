@@ -265,8 +265,6 @@ export const allNavItems = [
                 icon: ShoppingCart,
                 subItems: [
                     { href: '/procurement', label: 'Purchase Orders', icon: ShoppingCart, permission: 'view_purchase_orders' },
-                    { href: '/account-payable', label: 'Purchase Invoices', icon: FileClock, permission: 'view_purchase_invoices' },
-             
                 ]
             },
             {
