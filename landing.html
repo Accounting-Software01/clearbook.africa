@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClearBook</title>
+    <!-- This script loads Tailwind CSS, which is needed to style the page. -->
+    <!-- It allows us to use the utility classes from your original component. -->
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="flex min-h-screen flex-col bg-gradient-to-b from-white via-gray-50 to-white text-gray-900">
+
+    <!-- HEADER -->
+    <header class="sticky top-0 z-50 border-b bg-white/80 backdrop-blur-md">
+        <div class="mx-auto max-w-7xl px-6">
+            <div class="flex h-16 items-center justify-between">
+                <a href="/" class="flex items-center gap-3">
+                    <img src="/favicon.ico" alt="ClearBook" width="38" height="38" class="rounded-lg shadow-sm"/>
+                    <span class="text-xl font-semibold tracking-tight">ClearBook</span>
+                </a>
+                <nav class="hidden items-center gap-8 md:flex">
+                    <a href="#features" class="text-sm text-gray-600 hover:text-gray-900">Features</a>
+                    <a href="#pricing" class="text-sm text-gray-600 hover:text-gray-900">Pricing</a>
+                    <a href="/contact" class="text-sm text-gray-600 hover:text-gray-900">Contact</a>
+                </nav>
+                <div class="flex items-center gap-3">
+                    <a href="/login">
+                        <button class="text-sm px-3 py-1.5 hover:bg-gray-100 rounded-md">Login</button> <!-- Approximating ghost variant & sm size -->
+                    </a>
+                    <a href="/free-trial">
+                        <button class="text-sm px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-md">Start Free</button> <!-- Approximating sm size -->
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- HERO -->
+    <section class="relative isolate overflow-hidden pt-24 pb-32 md:pt-32">
+        <!-- The Globe component cannot be replicated in plain HTML without its code -->
+        <div class="absolute inset-0 z-0">[Globe Component Placeholder]</div>
+        <div class="relative z-10 mx-auto max-w-4xl px-6 text-center">
+            <div class="mb-6 flex justify-center">
+                <span class="rounded-full border border-green-200 bg-green-50 px-4 py-1 text-sm text-green-700">
+                    Built for African Businesses
+                </span>
+            </div>
+            <h1 class="text-4xl font-extrabold tracking-tight sm:text-5xl lg:text-6xl">
+                Finally — Accounting Software
+                <br class="hidden sm:block" />
+                <span class="bg-gradient-to-r from-green-600 to-emerald-400 bg-clip-text text-transparent">
+                    Built for Africa
+                </span>
+            </h1>
+            <p class="mt-6 text-lg text-gray-600 sm:text-xl">
+                ClearBook unifies accounting, procurement, inventory and manufacturing
+                into one modern ERP platform designed for African businesses.
+            </p>
+            <div class="mt-10 flex flex-wrap justify-center gap-4">
+                <a href="/free-trial">
+                    <button class="min-w-[180px] rounded-lg bg-green-600 px-5 py-3 text-base text-white shadow-lg hover:bg-green-700 hover:shadow-xl">
+                        Start Free Trial
+                    </button> <!-- Approximating lg size -->
+                </a>
+                <a href="#features">
+                    <button class="min-w-[180px] rounded-lg border border-gray-300 bg-white px-5 py-3 text-base text-gray-900 hover:bg-gray-100">
+                        Learn More
+                    </button> <!-- Approximating lg size & outline variant -->
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- TRUST BAR -->
+    <section class="border-y bg-gray-50 py-10">
+        <div class="mx-auto max-w-6xl px-6 text-center">
+            <p class="text-xs font-semibold uppercase tracking-widest text-gray-500">
+                Trusted across Africa
+            </p>
+            <div class="mt-6 grid grid-cols-2 gap-6 sm:grid-cols-4">
+                <div class="rounded-lg border bg-white py-3 shadow-sm">Nigeria</div>
+                <div class="rounded-lg border bg-white py-3 shadow-sm">Kenya</div>
+                <div class="rounded-lg border bg-white py-3 shadow-sm">Ghana</div>
+                <div class="rounded-lg border bg-white py-3 shadow-sm">South Africa</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FEATURES -->
+    <section id="features" class="py-24 md:py-32 bg-gradient-to-b from-gray-50 to-white">
+        <div class="mx-auto max-w-7xl px-6">
+            <div class="mb-16 text-center">
+                <h2 class="text-4xl font-bold md:text-5xl">
+                    Everything your business needs<br class="hidden sm:block" />
+                    in one platform
+                </h2>
+                <p class="mt-4 text-lg text-gray-600">
+                    Manage your financial operations with modern tools built for clarity and speed.
+                </p>
+            </div>
+            <div class="grid gap-8 md:grid-cols-3">
+                <!-- Feature 1 -->
+                <div class="group rounded-lg border shadow-sm transition-all duration-300 hover:-translate-y-3 hover:shadow-2xl">
+                    <div class="flex flex-row items-center gap-4 p-6 pb-2">
+                        <div class="rounded-lg bg-blue-50 p-3">
+                            <!-- Icon Placeholder -->
+                            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-600"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                        </div>
+                        <h3 class="text-xl font-semibold tracking-tight">Effortless Invoicing</h3>
+                    </div>
+                    <div class="p-6 pt-0">
+                        <p class="leading-relaxed text-gray-600">Create professional invoices in seconds and track payments automatically.</p>
+                    </div>
+                </div>
+                <!-- Feature 2 -->
+                <div class="group rounded-lg border shadow-sm transition-all duration-300 hover:-translate-y-3 hover:shadow-2xl">
+                    <div class="flex flex-row items-center gap-4 p-6 pb-2">
+                        <div class="rounded-lg bg-green-50 p-3">
+                            <!-- Icon Placeholder -->
+                            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-green-600"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>
+                        </div>
+                        <h3 class="text-xl font-semibold tracking-tight">Expense Tracking</h3>
+                    </div>
+                    <div class="p-6 pt-0">
+                        <p class="leading-relaxed text-gray-600">Record and categorize expenses easily with real-time financial insights.</p>
+                    </div>
+                </div>
+                <!-- Feature 3 -->
+                <div class="group rounded-lg border shadow-sm transition-all duration-300 hover:-translate-y-3 hover:shadow-2xl">
+                    <div class="flex flex-row items-center gap-4 p-6 pb-2">
+                        <div class="rounded-lg bg-purple-50 p-3">
+                            <!-- Icon Placeholder -->
+                            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-purple-600"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                        </div>
+                        <h3 class="text-xl font-semibold tracking-tight">Financial Reporting</h3>
+                    </div>
+                    <div class="p-6 pt-0">
+                        <p class="leading-relaxed text-gray-600">Generate Profit & Loss, Balance Sheets and cash-flow reports instantly.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="border-t bg-white py-12">
+        <div class="mx-auto max-w-7xl px-6 grid gap-8 md:grid-cols-3 text-sm text-gray-600">
+            <div>
+                <h3 class="font-semibold text-gray-900 mb-2">ClearBook</h3>
+                <p>Modern ERP platform built for African businesses.</p>
+            </div>
+            <div>
+                <h3 class="font-semibold text-gray-900 mb-2">Product</h3>
+                <ul class="space-y-1">
+                    <li><a href="#features" class="hover:text-gray-900">Features</a></li>
+                    <li><a href="#pricing" class="hover:text-gray-900">Pricing</a></li>
+                </ul>
+            </div>
+            <div>
+                <h3 class="font-semibold text-gray-900 mb-2">Company</h3>
+                <ul class="space-y-1">
+                    <li><a href="/contact" class="hover:text-gray-900">Contact</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="text-center text-xs text-gray-400 mt-8">
+            © <span id="year"></span> ClearBook Africa
+        </div>
+    </footer>
+
+    <script>
+        document.getElementById('year').textContent = new Date().getFullYear();
+    </script>
+</body>
+</html>
