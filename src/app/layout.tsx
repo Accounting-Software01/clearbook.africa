@@ -1,3 +1,4 @@
+
 import type { Metadata } from 'next';
 import './globals.css';
 import './print.css';
@@ -7,6 +8,7 @@ import AppLayout from './AppLayout';
 import { LanguageProvider } from '@/contexts/LanguageContext';
 import { AuthProvider } from '@/hooks/useAuth';
 
+import { SubscriptionCheck } from '@/components/SubscriptionCheck';
 export const metadata: Metadata = {
   title: 'ClearBooks',
   description: 'A comprehensive, cloud-ready accounting system, for seamless bookkeeping and financial management.',
@@ -26,12 +28,15 @@ export default function RootLayout({
       </head>
       <body className={cn("font-body antialiased bg-cover bg-center bg-fixed")}>
         <AuthProvider>
-          <LanguageProvider>
-            <AppLayout>
-              {children}
-            </AppLayout>
-            <Toaster />
-          </LanguageProvider>
+          {/* SubscriptionCheck will now protect your entire app */}
+          <SubscriptionCheck>
+            <LanguageProvider>
+              <AppLayout>
+                {children}
+              </AppLayout>
+              <Toaster />
+            </LanguageProvider>
+          </SubscriptionCheck>
         </AuthProvider>
       </body>
     </html>

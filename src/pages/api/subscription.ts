@@ -2,27 +2,27 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { SubscriptionTier } from '@/lib/subscription';
 
-// Replace with your actual database client
-// import { db } from './db'; 
-
-// Replace with your Paystack secret key
-const PAYSTACK_SECRET_KEY = 'YOUR_PAYSTACK_SECRET_KEY';
+// SECURE: Use an environment variable for the Paystack secret key
+const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
 const CBN_API_URL = 'https://www.cbn.gov.ng/rates/output.asp?_=1720617835111&rate=usd'; //This is a placeholder, a more reliable API should be used
+
+// --- DEBUGGING --- 
+if (PAYSTACK_SECRET_KEY) {
+  console.log('Paystack key loaded successfully. Starts with:', PAYSTACK_SECRET_KEY.substring(0, 7));
+} else {
+  console.error('!!! CRITICAL: Paystack secret key is NOT loaded. Check your .env.local file and restart the server.');
+}
 
 
 // --- Exchange Rate ---
-
 async function fetchExchangeRate(): Promise<number> {
   try {
-    // This is a placeholder. In a real application, you would use a reliable API to get the exchange rate.
-    // The CBN website is not a stable API.
     const response = await fetch(CBN_API_URL);
-    const data = await response.json(); //This is a placeholder, the actual response might be different.
-    const rate = data.rates.USD; //This is a placeholder
+    const data = await response.json(); 
+    const rate = data.rates.USD; 
     return rate;
   } catch (error) {
     console.error('Error fetching exchange rate:', error);
-    // Return a default rate or handle the error appropriately
     return 500; // Default to a safe estimate
   }
 }
@@ -35,8 +35,10 @@ async function calculatePriceInNaira(priceInUSD: number): Promise<number> {
 
 
 // --- Paystack Integration ---
-
 async function initializePayment(email: string, amount: number, metadata: any) {
+  if (!PAYSTACK_SECRET_KEY) {
+    throw new Error('Paystack secret key is not configured.');
+  }
   const response = await fetch('https://api.paystack.co/transaction/initialize', {
     method: 'POST',
     headers: {
@@ -55,6 +57,9 @@ async function initializePayment(email: string, amount: number, metadata: any) {
 }
 
 async function verifyPayment(reference: string) {
+  if (!PAYSTACK_SECRET_KEY) {
+    throw new Error('Paystack secret key is not configured.');
+  }
   const response = await fetch(`https://api.paystack.co/transaction/verify/${reference}`, {
     headers: {
       Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
@@ -68,8 +73,6 @@ async function verifyPayment(reference: string) {
 // --- Subscription Management ---
 
 async function getUserSubscription(userId: string): Promise<any | null> {
-    // In a real application, you would fetch this from your database
-    // For example: return await db.subscription.findUnique({ where: { userId } });
     console.log("Fetching subscription for user:", userId)
     return null; // Placeholder
 }
@@ -79,20 +82,15 @@ async function createSubscription(userId: string, tier: SubscriptionTier, durati
     const endDate = new Date();
     endDate.setDate(startDate.getDate() + durationInDays);
 
-    // In a real application, you would save this to your database
-    // For example: return await db.subscription.create({ data: { userId, tier, startDate, endDate, paid } });
-
     const subscription = {
-        id: new Date().toISOString(), // Replace with a proper ID generation
+        id: new Date().toISOString(), 
         userId,
         tier,
         startDate,
         endDate,
         paid
     };
-
     console.log("Creating subscription:", subscription);
-
     return subscription;
 }
 
@@ -110,6 +108,10 @@ async function hasActiveSubscription(userId: string): Promise<boolean> {
 // --- API Handler ---
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (!PAYSTACK_SECRET_KEY) {
+    return res.status(500).json({ error: 'Server configuration error: Paystack key not found.' });
+  }
+
   if (req.method === 'POST') {
     const { userId, tier, email, duration } = req.body;
 
@@ -120,31 +122,37 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     
     const priceInUSD = prices[tier];
     const priceInNaira = await calculatePriceInNaira(priceInUSD);
-    const payment = await initializePayment(email, priceInNaira, { tier, duration, userId });
-
-    res.status(200).json({ payment });
+    try {
+      const payment = await initializePayment(email, priceInNaira, { tier, duration, userId });
+      res.status(200).json({ payment });
+    } catch (error) {
+      res.status(500).json({ error: (error as Error).message });
+    }
     
   } else if (req.method === 'GET') {
     const { userId, reference } = req.query;
 
     if (reference) {
-        const paymentDetails = await verifyPayment(reference as string);
+        try {
+          const paymentDetails = await verifyPayment(reference as string);
 
-        if (paymentDetails.data.status === 'success') {
-            const { tier, duration, userId } = paymentDetails.data.metadata;
-            await createSubscription(userId as string, tier, duration, true);
-            res.redirect('/'); // Redirect to home page after successful subscription
-        } else {
-            res.status(400).json({ status: 'failed' });
+          if (paymentDetails.data.status === 'success') {
+              const { tier, duration, userId } = paymentDetails.data.metadata;
+              await createSubscription(userId as string, tier, duration, true);
+              res.redirect(302, '/'); 
+          } else {
+              res.status(400).json({ status: 'failed', message: 'Payment verification failed.' });
+          }
+        } catch (error) {
+          res.status(500).json({ error: (error as Error).message });
         }
     } else {
         const hasSubscription = await hasActiveSubscription(userId as string);
         res.status(200).json({ hasSubscription });
     }
 
-
-
   } else {
-    res.status(405).json({ error: 'Method not allowed' });
+    res.setHeader('Allow', ['POST', 'GET']);
+    res.status(405).json({ error: `Method ${req.method} not allowed` });
   }
 }

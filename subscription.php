@@ -14,11 +14,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 // --- CONFIGURATION ---
-define('PAYSTACK_SECRET_KEY', 'YOUR_PAYSTACK_SECRET_KEY'); 
+define('PAYSTACK_SECRET_KEY', 'sk_test_e6077d334cb1f7eed71d7373aae62b6c65005d3b'); 
 define('USD_NGN_EXCHANGE_RATE', 1500);
+// IMPORTANT: Replace with your actual frontend URL
+define('FRONTEND_URL', 'https://9000-firebase-clearbookgit-1767005762274.cluster-64pjnskmlbaxowh5lzq6i7v4ra.cloudworkstations.dev/subscription/verify'); 
 
 // --- DATABASE CONNECTION ---
-require_once __DIR__ . '/src/app/api/db_connect.php';
+require_once 'db_connect.php';
 if (!isset($conn) || $conn->connect_error) {
     http_response_code(500);
     echo json_encode(["success" => false, "error" => "Database connection failed: " . ($conn->connect_error ?? 'Unknown error')]);
@@ -26,9 +28,14 @@ if (!isset($conn) || $conn->connect_error) {
 }
 
 // --- PAYSTACK API FUNCTIONS ---
-function initialize_payment($email, $amount, $metadata) {
+function initialize_payment($email, $amount, $metadata, $callback_url) {
     $url = "https://api.paystack.co/transaction/initialize";
-    $fields = ['email' => $email, 'amount' => $amount * 100, 'metadata' => $metadata];
+    $fields = [
+        'email' => $email, 
+        'amount' => $amount * 100, 
+        'metadata' => $metadata,
+        'callback_url' => $callback_url
+    ];
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $url);
     curl_setopt($ch, CURLOPT_POST, true);
@@ -55,7 +62,6 @@ function verify_payment($reference) {
 $request_method = $_SERVER['REQUEST_METHOD'];
 
 if ($request_method === 'GET') {
-    // --- Fetch company's subscription status ---
     $company_id = $_GET['company_id'] ?? null;
     if (!$company_id) {
         http_response_code(400);
@@ -63,26 +69,58 @@ if ($request_method === 'GET') {
         exit();
     }
 
-    $stmt = $conn->prepare("SELECT tier, end_date FROM subscriptions WHERE company_id = ? AND paid = 1 ORDER BY end_date DESC LIMIT 1");
+    $stmt = $conn->prepare("SELECT * FROM subscriptions WHERE company_id = ? ORDER BY end_date DESC LIMIT 1");
     $stmt->bind_param("s", $company_id);
     $stmt->execute();
     $result = $stmt->get_result();
-    
-    if ($subscription = $result->fetch_assoc()) {
-        $end_date = new DateTime($subscription['end_date']);
-        $subscription['is_active'] = new DateTime() < $end_date;
-        echo json_encode(["success" => true, "data" => $subscription]);
-    } else {
-        echo json_encode(["success" => true, "data" => null]);
-    }
+    $subscription = $result->fetch_assoc();
     $stmt->close();
+
+    if (!$subscription) {
+        $id = uniqid('sub_');
+        $tier = 'basic';
+        $start_date = date('Y-m-d H:i:s');
+        $end_date = date('Y-m-d H:i:s');
+        $paid = 0;
+
+        $insert_stmt = $conn->prepare(
+            "INSERT INTO subscriptions (id, company_id, tier, start_date, end_date, paid) VALUES (?, ?, ?, ?, ?, ?)"
+        );
+        $insert_stmt->bind_param("sssssi", $id, $company_id, $tier, $start_date, $end_date, $paid);
+        
+        if (!$insert_stmt->execute()) {
+            http_response_code(500);
+            echo json_encode(["success" => false, "error" => "Failed to create initial subscription record.", "details" => $insert_stmt->error]);
+            $insert_stmt->close();
+            $conn->close();
+            exit();
+        }
+        $insert_stmt->close();
+
+        $stmt = $conn->prepare("SELECT * FROM subscriptions WHERE id = ?");
+        $stmt->bind_param("s", $id);
+        $stmt->execute();
+        $subscription = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+    }
+
+    $is_active = false;
+    if ($subscription) {
+        $end_date_obj = new DateTime($subscription['end_date']);
+        if ($subscription['paid'] == 1 && new DateTime() < $end_date_obj) {
+            $is_active = true;
+        }
+    }
+    
+    $response_data = $subscription ? array_merge($subscription, ['is_active' => $is_active]) : null;
+    
+    echo json_encode(["success" => true, "data" => $response_data]);
 
 } elseif ($request_method === 'POST') {
     $data = json_decode(file_get_contents("php://input"), true);
     $action = $data['action'] ?? '';
 
     if ($action === 'initialize') {
-        // --- Initialize Payment Transaction ---
         $company_id = $data['company_id'] ?? null;
         $tier = $data['tier'] ?? null;
         if (!$data['email'] || !$company_id || !$tier) {
@@ -92,25 +130,20 @@ if ($request_method === 'GET') {
         }
         
         $prices_usd = ['basic' => 10, 'premium' => 25];
-        if (!array_key_exists($tier, $prices_usd)) {
+        $price_ngn = ($prices_usd[$tier] ?? 0) * USD_NGN_EXCHANGE_RATE;
+        if ($price_ngn <= 0) {
             http_response_code(400);
             echo json_encode(["success" => false, "error" => "Invalid subscription tier."]);
             exit();
         }
 
-        $price_ngn = $prices_usd[$tier] * USD_NGN_EXCHANGE_RATE;
         $metadata = ['company_id' => $company_id, 'tier' => $tier, 'duration_days' => 30];
-        $payment_response = initialize_payment($data['email'], $price_ngn, $metadata);
+        $callback_url = FRONTEND_URL . '/subscription/verify';
+        $payment_response = initialize_payment($data['email'], $price_ngn, $metadata, $callback_url);
 
-        if ($payment_response && $payment_response['status']) {
-            echo json_encode($payment_response);
-        } else {
-            http_response_code(500);
-            echo json_encode(['success' => false, 'error' => 'Could not initialize payment.', 'details' => $payment_response['message'] ?? '']);
-        }
+        echo json_encode($payment_response);
 
     } elseif ($action === 'verify') {
-        // --- Verify Payment & Create Subscription in DB ---
         $reference = $data['reference'] ?? null;
         if (!$reference) {
              http_response_code(400);
@@ -122,20 +155,22 @@ if ($request_method === 'GET') {
 
         if ($verification && $verification['status'] && $verification['data']['status'] === 'success') {
             $metadata = $verification['data']['metadata'];
-            $id = uniqid('sub_');
-            $paid = true;
+            $company_id = $metadata['company_id'];
+            $tier = $metadata['tier'];
+            $duration_days = $metadata['duration_days'] ?? 30;
+            $paid = 1;
             $start_date = date('Y-m-d H:i:s');
-            $end_date = date('Y-m-d H:i:s', strtotime("+" . ($metadata['duration_days'] ?? 30) . " days"));
+            $end_date = date('Y-m-d H:i:s', strtotime(" + $duration_days days"));
 
-            $stmt = $conn->prepare("INSERT INTO subscriptions (id, company_id, tier, start_date, end_date, paid, paystack_reference) VALUES (?, ?, ?, ?, ?, ?, ?)");
-            $stmt->bind_param("sssssis", $id, $metadata['company_id'], $metadata['tier'], $start_date, $end_date, $paid, $reference);
+            $stmt = $conn->prepare("UPDATE subscriptions SET tier = ?, start_date = ?, end_date = ?, paid = ?, paystack_reference = ? WHERE company_id = ?");
+            $stmt->bind_param("sssiss", $tier, $start_date, $end_date, $paid, $reference, $company_id);
 
             if ($stmt->execute()) {
-                http_response_code(201);
-                echo json_encode(["success" => true, "message" => "Subscription created successfully."]);
+                http_response_code(200);
+                echo json_encode(["success" => true, "message" => "Subscription updated successfully."]);
             } else {
                 http_response_code(500);
-                echo json_encode(["success" => false, "error" => "Failed to save subscription to database."]);
+                echo json_encode(["success" => false, "error" => "Failed to update subscription.", "details" => $stmt->error]);
             }
             $stmt->close();
         } else {
@@ -152,4 +187,3 @@ if ($request_method === 'GET') {
 }
 
 $conn->close();
-?>

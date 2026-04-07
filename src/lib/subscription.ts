@@ -5,7 +5,7 @@ import { NextApiRequest, NextApiResponse } from 'next';
 // import { db } from './db'; 
 
 // Replace with your Paystack secret key
-const PAYSTACK_SECRET_KEY = 'YOUR_PAYSTACK_SECRET_KEY';
+const PAYSTACK_SECRET_KEY = 'sk_test_e6077d334cb1f7eed71d7373aae62b6c65005d3b';
 const CBN_API_URL = 'https://www.cbn.gov.ng/rates/output.asp?_=1720617835111&rate=usd'; //This is a placeholder, a more reliable API should be used
 
 export enum SubscriptionTier {
@@ -128,7 +128,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const prices: Record<SubscriptionTier, number> = {
         [SubscriptionTier.FREE]: 0,
         [SubscriptionTier.BASIC]: 10,
-        [Subscription_Tier.PREMIUM]: 25,
+        [SubscriptionTier.PREMIUM]: 25,
     };
     
     const priceInUSD = prices[tier];
