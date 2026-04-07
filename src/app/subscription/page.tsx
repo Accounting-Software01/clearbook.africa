@@ -16,7 +16,7 @@ interface Tier {
 const tiers: Tier[] = [
   {
     name: 'basic',
-    price: 10,
+    price: 35,
     description: 'Perfect for getting started',
     features: [
       'Basic features',
@@ -27,7 +27,7 @@ const tiers: Tier[] = [
   },
   {
     name: 'premium',
-    price: 25,
+    price: 65,
     description: 'Best for bigger companies',
     features: [
       'Everything in Basic',
