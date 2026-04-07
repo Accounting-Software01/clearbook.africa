@@ -22,12 +22,20 @@ export const SubscriptionCheck = ({ children }: { children: React.ReactNode }) =
       return;
     }
 
-    // Any page starting with /subscription is considered public for this check.
-    // This prevents the race condition on the /subscription/verify page.
-    const isSubscriptionPage = pathname.startsWith('/subscription');
+// Define all pages that DO NOT require a subscription check
+const publicPaths = [
+  '/',             // Your main landing page
+  '/login',        // The login page
+  '/free-trial',   // The free trial sign-up page
+  '/contact'       // The contact page
+];
+
+const isPublicPage = publicPaths.includes(pathname) || pathname.startsWith('/subscription');
+
+
 
     // If subscription is inactive and user is on a protected page, redirect.
-    if (subscriptionStatus === 'inactive' && !isSubscriptionPage) {
+    if (subscriptionStatus === 'inactive' && !isPublicPage) {
       router.push('/subscription');
       return;
     }

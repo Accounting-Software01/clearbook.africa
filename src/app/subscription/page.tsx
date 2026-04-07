@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -27,7 +28,7 @@ const tiers: Tier[] = [
   {
     name: 'premium',
     price: 25,
-    description: 'Best for growing teams',
+    description: 'Best for bigger companies',
     features: [
       'Everything in Basic',
       'Unlimited users',
@@ -212,9 +213,15 @@ const SubscriptionPage = () => {
           </div>
         )}
 
-        <p className="text-center text-xs text-gray-500 mt-10">
-          Secure payment powered by your gateway • Cancel anytime • No hidden fees
-        </p>
+        <div className="text-center text-xs text-gray-500 mt-10 flex justify-center items-center gap-2">
+          <span>Secure payment powered by</span>
+          <img 
+            src="https://instatus.com/user-content/v1751638663/ipwtxpxgevobwlij20s5.png" 
+            alt="Paystack logo" 
+            className="h-4" 
+          />
+          <span>• Cancel anytime • No hidden fees</span>
+        </div>
       </div>
     </div>
   );

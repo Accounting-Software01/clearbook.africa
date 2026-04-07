@@ -3,46 +3,40 @@
 import { useState, useEffect, createContext, useContext, ReactNode, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 
-// 1. Updated User Interface to be compatible with Sidebar and other components
+// Interface to define the user object. 'id' is the standard property.
 interface User {
     id: string;
-    full_name: string; // Use full_name for compatibility
+    full_name: string;
     email: string;
     role: string;
     company_id: string;
     company_type: string;
-    permissions?: string[]; // This is the critical field for the Sidebar
+    permissions?: string[];
 }
 
-// Update context to use the new User type
+// Interface for the context value.
 interface AuthContextType {
     user: User | null;
     subscriptionStatus: 'loading' | 'active' | 'inactive';
     isAuthLoading: boolean;
-    login: (userData: any) => Promise<void>; // Loosen type for flexibility during login
+    login: (userData: any) => Promise<void>;
     logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// 2. Added the function to fetch permissions from your API
+// Fetches user permissions from the API.
 const fetchCombinedPermissions = async (userId: string, companyId: string): Promise<string[]> => {
     try {
         const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/get_user_permissions.php?user_id=${userId}&company_id=${companyId}`);
         if (!response.ok) {
-            console.error("Permissions API response was not OK.", response.statusText);
+            console.error("Permissions API response was not OK.");
             return [];
         }
         const data = await response.json();
-        if (data.success && Array.isArray(data.permissions)) {
-            console.log("[fetchCombinedPermissions] Successfully fetched permissions.");
-            return data.permissions;
-        } else {
-            console.warn("[fetchCombinedPermissions] API call did not return a permissions array.", data.message);
-            return [];
-        }
+        return data.success && Array.isArray(data.permissions) ? data.permissions : [];
     } catch (error) {
-        console.error("[fetchCombinedPermissions] Failed to fetch permissions:", error);
+        console.error("Failed to fetch permissions:", error);
         return [];
     }
 };
@@ -55,23 +49,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/subscription.php`;
 
     const fetchSubscriptionStatus = useCallback(async (companyId: string) => {
-        console.log(`[fetchSubscriptionStatus] Fetching for company_id: ${companyId}`);
         setSubscriptionStatus('loading');
         try {
             const response = await fetch(`${apiUrl}?company_id=${companyId}`);
             const data = await response.json();
-            if (data.success && data.data?.is_active) {
-                setSubscriptionStatus('active');
-            } else {
-                setSubscriptionStatus('inactive');
-            }
+            setSubscriptionStatus(data.success && data.data?.is_active ? 'active' : 'inactive');
         } catch (error) {
             console.error('[fetchSubscriptionStatus] Fetch error:', error);
             setSubscriptionStatus('inactive');
         }
     }, [apiUrl]);
 
-    // 3. Modified to fetch permissions on initial load
+    // Handles initial authentication check on app load.
     useEffect(() => {
         const initializeAuth = async () => {
             setIsAuthLoading(true);
@@ -79,13 +68,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
             if (storedUser) {
                 const parsedUser = JSON.parse(storedUser);
-                // Fetch permissions and subscription status concurrently
-                const [permissions] = await Promise.all([
-                    fetchCombinedPermissions(parsedUser.id, parsedUser.company_id),
-                    fetchSubscriptionStatus(parsedUser.company_id)
-                ]);
-                // Set the final user state including permissions
-                setUser({ ...parsedUser, permissions });
+                const userId = parsedUser.id || parsedUser.uid; // *** KEY FIX: Handles 'uid' from localStorage ***
+
+                if (userId) {
+                    const [permissions] = await Promise.all([
+                        fetchCombinedPermissions(userId, parsedUser.company_id),
+                        fetchSubscriptionStatus(parsedUser.company_id)
+                    ]);
+                    setUser({ ...parsedUser, id: userId, permissions }); // Standardize to use 'id'
+                } else {
+                    setSubscriptionStatus('inactive');
+                }
             } else {
                 setSubscriptionStatus('inactive');
             }
@@ -94,10 +87,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         initializeAuth();
     }, [fetchSubscriptionStatus]);
 
-    // 4. Modified to fetch permissions on login
+    // Handles the login process.
     const login = async (userData: any) => {
+        // *** KEY FIX: Standardizes user object from auth library to use 'id' internally ***
         const formattedUser = {
-            id: String(userData.id),
+            id: String(userData.id || userData.uid),
             full_name: userData.full_name || userData.name,
             email: userData.email,
             role: userData.role,
@@ -122,7 +116,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 router.push('/dashboard');
             } else {
                 setSubscriptionStatus('inactive');
-                router.push('/subscription');
+                // Decide where to redirect based on role
+                if (formattedUser.role === 'admin') {
+                    router.push('/subscription');
+                } else {
+                    router.push('/subscription/contact-admin');
+                }
             }
         } catch (error) {
             console.error('[Login] Failed to process login:', error);
@@ -145,6 +144,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
+// Custom hook to use the auth context.
 export const useAuth = () => {
     const context = useContext(AuthContext);
     if (context === undefined) {

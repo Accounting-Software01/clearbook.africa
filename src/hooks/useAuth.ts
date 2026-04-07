@@ -1,108 +1,106 @@
 'use client';
 
-import { useState, useEffect, createContext, useContext, ReactNode, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect, createContext, useContext, ReactNode } from 'react';
+import { getCurrentUser, login as apiLogin, logout as apiLogout } from '@/lib/auth';
 
+// Define a user type that matches your application's user object
 interface User {
-    id: string;
-    name: string;
+    uid: string;
     email: string;
+    full_name: string;
+    role: string;
+    user_type: string;
+    company_type: string;
     company_id: string;
+    permissions?: string[]; // <-- This will now store combined permissions
 }
 
+// Define the shape of the authentication context
 interface AuthContextType {
     user: User | null;
-    subscriptionStatus: 'loading' | 'active' | 'inactive';
-    isAuthLoading: boolean;
-    login: (userData: Omit<User, 'id'> & { id: string | number }) => Promise<void>; // Make login async
-    logout: () => void;
+    isLoading: boolean;
+    login: (email: string, pass: string) => Promise<void>;
+    logout: () => Promise<void>;
 }
 
+// Create the authentication context
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider = ({ children }: { children: ReactNode }) => {
-    const [user, setUser] = useState<User | null>(null);
-    const [subscriptionStatus, setSubscriptionStatus] = useState<'loading' | 'active' | 'inactive'>('loading');
-    const [isAuthLoading, setIsAuthLoading] = useState(true);
-    const router = useRouter();
-    const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/subscription.php`;
+// Define the props for the AuthProvider component
+interface AuthProviderProps {
+    children: ReactNode;
+}
 
-    const fetchSubscriptionStatus = useCallback(async (companyId: string) => {
-        console.log(`[fetchSubscriptionStatus] Fetching for company_id: ${companyId}`);
-        setSubscriptionStatus('loading');
-        try {
-            const response = await fetch(`${apiUrl}?company_id=${companyId}`);
-            const data = await response.json();
-            if (data.success && data.data?.is_active) {
-                console.log('[fetchSubscriptionStatus] Status: active');
-                setSubscriptionStatus('active');
-            } else {
-                console.log('[fetchSubscriptionStatus] Status: inactive');
-                setSubscriptionStatus('inactive');
-            }
-        } catch (error) {
-            console.error('[fetchSubscriptionStatus] Fetch error:', error);
-            setSubscriptionStatus('inactive');
+/**
+ * Fetches combined permissions (role-based and user-specific) for a given user.
+ */
+const fetchCombinedPermissions = async (userId: string, companyId: string): Promise<string[]> => {
+    try {
+        const response = await fetch(`https://hariindustries.net/api/clearbook/get_user_permissions.php?user_id=${userId}&company_id=${companyId}`);
+        if (!response.ok) return [];
+        const data = await response.json();
+        if (data.success) {
+            // Use the permissions key from the API response
+            return data.permissions || [];
         }
-    }, [apiUrl]);
-
-    // Effect for initializing from localStorage on page load/refresh
-    useEffect(() => {
-        console.log('[AuthProvider] Initializing from localStorage...');
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) {
-            const parsedUser = JSON.parse(storedUser);
-            setUser(parsedUser);
-            fetchSubscriptionStatus(parsedUser.company_id);
-        } else {
-            setSubscriptionStatus('inactive'); // No user, so no active subscription
-        }
-        setIsAuthLoading(false);
-    }, [fetchSubscriptionStatus]);
-
-    const login = async (userData: Omit<User, 'id'> & { id: string | number }) => {
-        const formattedUser = { ...userData, id: String(userData.id) };
-        setUser(formattedUser);
-        localStorage.setItem('user', JSON.stringify(formattedUser));
-
-        // --- START OF THE CORE FIX ---
-        // Fetch status directly instead of relying on a separate useEffect
-        console.log('[Login] User logged in. Fetching subscription status before redirecting...');
-        setSubscriptionStatus('loading');
-        try {
-            const response = await fetch(`${apiUrl}?company_id=${formattedUser.company_id}`);
-            const data = await response.json();
-
-            if (data.success && data.data?.is_active) {
-                console.log('[Login] Subscription is active. Redirecting to /dashboard.');
-                setSubscriptionStatus('active');
-                router.push('/dashboard');
-            } else {
-                console.log('[Login] Subscription is inactive. Redirecting to /subscription.');
-                setSubscriptionStatus('inactive');
-                router.push('/subscription');
-            }
-        } catch (error) {
-            console.error('[Login] Failed to fetch subscription status during login:', error);
-            setSubscriptionStatus('inactive');
-            router.push('/subscription'); // On error, send to subscription page
-        }
-        // --- END OF THE CORE FIX ---
-    };
-
-    const logout = () => {
-        console.log('[Logout] Clearing user and session.');
-        localStorage.removeItem('user');
-        setUser(null);
-        setSubscriptionStatus('inactive');
-        router.push('/login');
-    };
-
-    const value = { user, subscriptionStatus, isAuthLoading, login, logout };
-
-    return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+        return [];
+    } catch (error) {
+        console.error("Failed to fetch combined permissions:", error);
+        return [];
+    }
 };
 
+/**
+ * The AuthProvider component wraps the application and provides
+ * the authentication context to all child components.
+ */
+export function AuthProvider({ children }: AuthProviderProps) {
+    const [user, setUser] = useState<User | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        const checkUser = async () => {
+            let sessionUser = await getCurrentUser();
+            if (sessionUser) {
+                // Fetch combined permissions and add them to the user object
+                const permissions = await fetchCombinedPermissions(sessionUser.uid, sessionUser.company_id);
+                sessionUser = { ...sessionUser, permissions };
+                setUser(sessionUser);
+            }
+            setIsLoading(false);
+        };
+
+        checkUser();
+    }, []);
+
+    const login = async (email: string, pass: string) => {
+        let loggedInUser = await apiLogin(email, pass);
+        if (loggedInUser) {
+            // Fetch combined permissions and add them to the user object before setting the state
+            const permissions = await fetchCombinedPermissions(loggedInUser.uid, loggedInUser.company_id);
+            loggedInUser = { ...loggedInUser, permissions };
+            setUser(loggedInUser);
+        }
+    };
+
+    const logout = async () => {
+        await apiLogout();
+        setUser(null);
+    };
+
+    const value = {
+        user,
+        isLoading,
+        login,
+        logout,
+    };
+
+    return React.createElement(AuthContext.Provider, { value: value }, children);
+}
+
+/**
+ * A custom hook to easily access the authentication context.
+ */
 export const useAuth = () => {
     const context = useContext(AuthContext);
     if (context === undefined) {
