@@ -11,6 +11,8 @@ import { NotificationCenter } from '@/components/NotificationCenter';
 import { useAuth } from '@/hooks/useAuth';
 import SessionExpired from '@/components/SessionExpired';
 import { RecentActivities } from '@/components/RecentActivities';
+import { UserProfile } from '@/components/ui/UserProfile';
+
 
 const navItems = [
     { href: '/dashboard', label: 'Dashboard' },
@@ -95,14 +97,11 @@ export default function AppLayout({
                                 <RecentActivities currentTitle={title} />
                             </div>
                         </div>
-                         <div className="flex items-center gap-2">
-                             {user && <NotificationCenter userRole={user.role} userCompanyId={user.company_id} />}
-                             
-                             <Button variant="ghost" size="sm" onClick={logout}>
-                                <LogOut className="mr-2 h-4 w-4" />
-                                Logout
-                            </Button>
-                         </div>
+                        <div className="flex items-center gap-2">
+    {user && <NotificationCenter userRole={user.role} userCompanyId={user.company_id} />}
+    {user && <UserProfile />}
+</div>
+
                     </CardHeader>
                    <div
                         className={cn(
