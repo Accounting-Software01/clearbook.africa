@@ -28,7 +28,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 // Fetches user permissions from the API.
 const fetchCombinedPermissions = async (userId: string, companyId: string): Promise<string[]> => {
     try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/get_user_permissions.php?user_id=${userId}&company_id=${companyId}`);
+        const response = await fetch(`https://hariindustries.net/api/clearbook/get_user_permissions.php?user_id=${userId}&company_id=${companyId}`);
         if (!response.ok) {
             console.error("Permissions API response was not OK.");
             return [];
@@ -46,7 +46,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [subscriptionStatus, setSubscriptionStatus] = useState<'loading' | 'active' | 'inactive'>('loading');
     const [isAuthLoading, setIsAuthLoading] = useState(true);
     const router = useRouter();
-    const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/subscription.php`;
+    const apiUrl = `https://hariindustries.net/api/clearbook/subscription.php`;
 
     const fetchSubscriptionStatus = useCallback(async (companyId: string) => {
         setSubscriptionStatus('loading');

@@ -440,7 +440,7 @@ const SubscriptionPage = () => {
   const [selectedPeriod, setSelectedPeriod] = useState<'monthly' | 'annual'>('monthly');
   const [isAnnualBilling, setIsAnnualBilling] = useState(false);
 
-  const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/subscription.php`;
+  const apiUrl = `https://hariindustries.net/api/clearbook/subscription.php`;
 
   const handleTierSelection = (tier: string, period: 'monthly' | 'annual') => {
     setSelectedTier(tier);

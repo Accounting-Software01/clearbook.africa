@@ -51,7 +51,7 @@ const VerificationPage = () => {
 
         const verifyPayment = async () => {
             try {
-                const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/subscription.php`;
+                const apiUrl = `https://hariindustries.net/api/clearbook/subscription.php`;
                 const response = await fetch(apiUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
