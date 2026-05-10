@@ -147,7 +147,7 @@ export function SupplierRegistrationWizard({ isOpen, onOpenChange, onComplete }:
         }
     };
 
-    const isStep1Valid = supplierData.name && supplierData.phone;
+   const isStep1Valid = !!supplierData.name;
 
     const renderStepContent = () => {
         switch (currentStep) {
@@ -175,8 +175,9 @@ export function SupplierRegistrationWizard({ isOpen, onOpenChange, onComplete }:
                                 <Label htmlFor="contact_person">Contact Person</Label>
                                 <Input id="contact_person" name="contact_person" value={supplierData.contact_person} onChange={handleInputChange} />
                             </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="phone">Phone Number <span className="text-red-500">*</span></Label>
+                            <div className="space-y-2">                            
+                                <Label htmlFor="phone">Phone Number</Label>
+
                                 <Input id="phone" name="phone" value={supplierData.phone} onChange={handleInputChange} />
                             </div>
                         </div>
