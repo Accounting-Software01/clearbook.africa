@@ -33,7 +33,7 @@ import { useForm, ValidationError } from '@formspree/react'; // npm install @for
 
 export default function FreeTrialPage() {
   // Replace with your actual Formspree form ID
-  const FORMSPREE_FORM_ID = 'mnjgdeka'; // Example ID – replace with yours
+  const FORMSPREE_FORM_ID = 'xpqvjpeo'; // Example ID – replace with yours
 
   // Separate component to use the useForm hook
   function FreeTrialForm() {
