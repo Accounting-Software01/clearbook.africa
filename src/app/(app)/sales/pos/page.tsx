@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { Search, Package, ShoppingCart, Trash2, PlusCircle, Settings, Clock, Tag, User, Loader2 } from 'lucide-react';
+import { Search, Package, ShoppingCart, Trash2, PlusCircle, Settings, Clock, Tag, User, Loader2, Gift } from 'lucide-react';
 import { format } from 'date-fns';
 
 // UI Components
@@ -12,7 +12,13 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-
+import { Label } from '@/components/ui/label'; // add to the top imports
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 // Hooks and Libs
 import { useToast } from '@/hooks/use-toast';
@@ -34,6 +40,7 @@ interface Item {
   category: string; // Assuming items have a category
   stock: number;
   base_price: number;
+   cost_price: number;       
   price_tiers: Record<string, number>;
 }
 
@@ -42,6 +49,7 @@ interface CartItem extends Item {
     unit_price: number;
     discount: number;
     vat: number;
+   is_freebie?: boolean; 
 }
 
 const currencyFormatter = new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' });
@@ -90,27 +98,55 @@ const ProductListItem = ({ product, onAddToCart, disabled, activePriceTier }: { 
 };
 
 
-const CartItemView = ({ item, onRemove, onQuantityChange }: { item: CartItem, onRemove: (id: string) => void, onQuantityChange: (id: string, quantity: number) => void }) => (
-    <div className="flex justify-between items-center mb-4">
-        <div>
-            <p className="font-semibold">{item.name}</p>
-            <p className="text-sm text-muted-foreground">{currencyFormatter.format(item.unit_price)}</p>
-        </div>
-        <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => onQuantityChange(item.id, item.quantity - 1)} disabled={item.quantity <= 1}>-</Button>
-            <Input 
-                type="number" 
-                className="w-16 h-8 text-center" 
-                value={item.quantity}
-                onChange={(e) => onQuantityChange(item.id, parseInt(e.target.value, 10) || 1)}
-            />
-            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => onQuantityChange(item.id, item.quantity + 1)}>+</Button>
-            <p className="font-bold w-24 text-right">{currencyFormatter.format(item.unit_price * item.quantity)}</p>
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onRemove(item.id)}>
-                <Trash2 className="h-4 w-4 text-red-500" />
-            </Button>
-        </div>
+const CartItemView = ({ 
+  item, 
+  onRemove, 
+  onQuantityChange, 
+  onFreeQuantityChange, 
+  freeQty 
+}: { 
+  item: CartItem; 
+  onRemove: (id: string) => void; 
+  onQuantityChange: (id: string, quantity: number) => void;
+  onFreeQuantityChange: (id: string, qty: number) => void;
+  freeQty: number;
+}) => (
+  <div className="flex justify-between items-center mb-4">
+    <div>
+      <p className="font-semibold">
+        {item.name}
+        {item.is_freebie && <Badge variant="secondary" className="ml-2 text-xs">FREE</Badge>}
+      </p>
+      <p className="text-sm text-muted-foreground">
+        {item.is_freebie ? 'Free gift' : currencyFormatter.format(item.unit_price)}
+      </p>
     </div>
+    <div className="flex items-center gap-2">
+      {!item.is_freebie && (
+        <>
+          <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => onQuantityChange(item.id, item.quantity - 1)} disabled={item.quantity <= 1}>-</Button>
+          <Input type="number" className="w-16 h-8 text-center" value={item.quantity} onChange={(e) => onQuantityChange(item.id, parseInt(e.target.value, 10) || 1)} />
+          <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => onQuantityChange(item.id, item.quantity + 1)}>+</Button>
+          {/* Free Qty input */}
+          <div className="flex items-center gap-1">
+            <span className="text-xs text-muted-foreground">Free:</span>
+            <Input
+              type="number"
+              className="w-14 h-8 text-center"
+              value={freeQty}
+              onChange={(e) => onFreeQuantityChange(item.id, parseInt(e.target.value, 10) || 0)}
+              min="0"
+            />
+          </div>
+        </>
+      )}
+      {item.is_freebie && <span className="w-16 text-center">{item.quantity}</span>}
+      <p className="font-bold w-24 text-right">{currencyFormatter.format(item.unit_price * item.quantity)}</p>
+      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onRemove(item.id)}>
+        <Trash2 className="h-4 w-4 text-red-500" />
+      </Button>
+    </div>
+  </div>
 );
 
 
@@ -267,6 +303,8 @@ export default function PointOfSalePage() {
     const [selectedCustomerId, setSelectedCustomerId] = useState<string>('');
     const [activeCategory, setActiveCategory] = useState('All Products');
     const [cart, setCart] = useState<CartItem[]>([]);
+    const [isFreeGiftModalOpen, setIsFreeGiftModalOpen] = useState(false);
+    const [freeGiftQuantities, setFreeGiftQuantities] = useState<Record<string, number>>({});  
 
     useEffect(() => {
         setCart(currentCart => currentCart.map(item => {
@@ -275,7 +313,10 @@ export default function PointOfSalePage() {
             return { ...item, vat: newVat };
         }));
     }, [vatRate]);
-    
+
+    const [invoiceDate, setInvoiceDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+    const [dueDate, setDueDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  
     const fetchInitialData = useCallback(async () => {
         if (!user?.company_id) return;
         setIsLoading(true);
@@ -290,6 +331,12 @@ export default function PointOfSalePage() {
             const customersData = await customersRes.json();
             const itemsData = await itemsRes.json();
 
+
+            itemsData = itemsData.map((item: any) => ({
+            ...item,
+            cost_price: Number(item.cost_price) || 0,
+            }));
+          
             if (customersData.success) setCustomers(customersData.data);
             setItems(itemsData);
             
@@ -348,6 +395,48 @@ export default function PointOfSalePage() {
             }
         });
     };
+
+  const handleFreeQuantityChange = (productId: string, freeQty: number) => {
+  setCart(prev => {
+    const regularItem = prev.find(item => item.id === productId && !item.is_freebie);
+    if (!regularItem) return prev;
+
+    const freeId = `${productId}-free`;
+    const existingFreeIndex = prev.findIndex(i => i.id === freeId && i.is_freebie);
+
+    if (freeQty <= 0) {
+      if (existingFreeIndex !== -1) {
+        const newCart = [...prev];
+        newCart.splice(existingFreeIndex, 1);
+        return newCart;
+      }
+      return prev;
+    }
+
+    const freeItem: CartItem = {
+      ...regularItem,
+      id: freeId,
+      quantity: freeQty,
+      unit_price: 0,
+      discount: 0,
+      vat: 0,
+      is_freebie: true,
+    };
+
+    if (existingFreeIndex !== -1) {
+      const newCart = [...prev];
+      newCart[existingFreeIndex] = freeItem;
+      return newCart;
+    } else {
+      return [...prev, freeItem];
+    }
+  });
+};
+
+const getFreeQuantity = (productId: string) => {
+  const freeItem = cart.find(item => item.id === `${productId}-free` && item.is_freebie);
+  return freeItem ? freeItem.quantity : 0;
+};
   
     const handleQuantityChange = (itemId: string, newQuantity: number) => {
         if (newQuantity < 1) {
@@ -383,6 +472,7 @@ export default function PointOfSalePage() {
     }, [cart]);
 
 
+  
     const handleCompleteSale = async () => {
         if (!selectedCustomerId || cart.length === 0) {
             toast({ variant: 'destructive', title: 'Validation Error', description: 'Please select a customer and add items to the cart.' });
@@ -396,10 +486,14 @@ export default function PointOfSalePage() {
         setIsSubmitting(true);
         const payload = {
             customer_id: selectedCustomerId,
-            invoice_date: format(new Date(), 'yyyy-MM-dd'),
-            due_date: format(new Date(), 'yyyy-MM-dd'),
+          
+        
+            invoice_date: invoiceDate,
+            due_date: dueDate, // or separate due date if you want
+          
             payment_type: 'Cash', 
-            narration: `Point of Sale transaction on ${format(new Date(), 'PPP')}`,
+            
+            narration: `Point of Sale transaction on ${format(new Date(invoiceDate), 'PPP')}`,
             sales_items: cart.map(item => ({ 
                 item_id: item.id.toString(),
                 item_name: item.name,
@@ -407,6 +501,8 @@ export default function PointOfSalePage() {
                 quantity: item.quantity,
                 discount: item.discount,
                 vat: item.vat,
+                 cost_price: item.cost_price,      // add this
+                is_freebie: item.is_freebie || false, // add this
             })),
             sub_total: subTotal,
             total_discount: totalDiscount,
@@ -436,7 +532,131 @@ export default function PointOfSalePage() {
             setIsSubmitting(false);
         }
     };
-    
+
+ const FreeGiftModal = ({ 
+  isOpen, 
+  onClose, 
+  items, 
+  onAddFreeItems 
+}: { 
+  isOpen: boolean; 
+  onClose: () => void; 
+  items: Item[]; 
+  onAddFreeItems: (selections: { productId: string; quantity: number }[]) => void; 
+}) => {
+  const [search, setSearch] = useState('');
+  const [quantities, setQuantities] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    if (isOpen) {
+      setQuantities({});
+      setSearch('');
+    }
+  }, [isOpen]);
+
+  const handleQuantityChange = (productId: string, value: number) => {
+    setQuantities(prev => ({
+      ...prev,
+      [productId]: Math.max(0, value || 0),
+    }));
+  };
+
+  const handleAdd = () => {
+    const selections = Object.entries(quantities)
+      .filter(([, qty]) => qty > 0)
+      .map(([productId, quantity]) => ({ productId, quantity }));
+    if (selections.length === 0) return;
+    onAddFreeItems(selections);
+    onClose();
+  };
+
+  const filteredItems = items.filter(item =>
+    item.name.toLowerCase().includes(search.toLowerCase()) ||
+    item.code?.toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[540px] max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Add Free Cartons</DialogTitle>
+        </DialogHeader>
+        <div className="py-4 space-y-4">
+          <div className="relative">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search products..."
+              className="pl-8"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          <div className="space-y-2 max-h-[50vh] overflow-y-auto">
+            {filteredItems.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No products found.</p>
+            ) : (
+              filteredItems.map(item => (
+                <div key={item.id} className="flex items-center justify-between p-2 border rounded-md">
+                  <div>
+                    <p className="font-medium">{item.name}</p>
+                    <p className="text-xs text-muted-foreground">{item.code}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm">Free:</span>
+                    <Input
+                      type="number"
+                      className="w-20 h-8 text-center"
+                      value={quantities[item.id] || 0}
+                      onChange={(e) => handleQuantityChange(item.id, parseInt(e.target.value, 10) || 0)}
+                      min="0"
+                    />
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+          <Button className="w-full" onClick={handleAdd} disabled={!Object.values(quantities).some(q => q > 0)}>
+            Add Free Items
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+  
+  const addFreeItems = (selections: { productId: string; quantity: number }[]) => {
+  setCart(prev => {
+    const newCart = [...prev];
+    selections.forEach(({ productId, quantity }) => {
+      // Find the regular item to copy properties
+      const regularItem = prev.find(item => item.id === productId && !item.is_freebie);
+      if (!regularItem) return;
+
+      const freeId = `${productId}-free`;
+      const existingIndex = newCart.findIndex(i => i.id === freeId && i.is_freebie);
+
+      if (existingIndex !== -1) {
+        // Update existing free line – add to its quantity
+        const existing = newCart[existingIndex];
+        existing.quantity += quantity;
+        // VAT is already 0; no change needed
+      } else {
+        // Add new free line
+        const freeItem: CartItem = {
+          ...regularItem,
+          id: freeId,
+          quantity: quantity,
+          unit_price: 0,
+          discount: 0,
+          vat: 0,
+          is_freebie: true,
+        };
+        newCart.push(freeItem);
+      }
+    });
+    return newCart;
+  });
+};
     const filteredProducts = items.filter(p => activeCategory === 'All Products' || p.category === activeCategory);
     
     if (isLoading) {
@@ -457,7 +677,37 @@ export default function PointOfSalePage() {
                             {customers.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                         </SelectContent>
                     </Select>
-                
+
+ {/* Invoice Date */}
+    <div className="relative">
+      <Input
+        type="date"
+        value={invoiceDate}
+        onChange={(e) => setInvoiceDate(e.target.value)}
+        disabled={isSubmitting}
+        className="pl-28 w-[180px]"
+      />
+      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm pointer-events-none">
+        Invoice Date
+      </span>
+    </div>
+
+    {/* Due Date */}
+    <div className="relative">
+      <Input
+        type="date"
+        value={dueDate}
+        onChange={(e) => setDueDate(e.target.value)}
+        disabled={isSubmitting}
+        className="pl-24 w-[180px]"
+      />
+      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm pointer-events-none">
+        Due Date
+      </span>
+    </div>
+
+
+                  
                     <Select value={activePriceTier} onValueChange={setActivePriceTier} disabled={isSubmitting || cart.length > 0}>
                         <SelectTrigger className="w-[180px]">
                             <Tag className="h-4 w-4 mr-2 text-muted-foreground"/>
@@ -518,17 +768,63 @@ export default function PointOfSalePage() {
 
                 {/* Cart Section */}
                 <Card className="flex-[2] flex flex-col">
-                    <CardHeader className="flex-row items-center justify-between">
-                        <CardTitle>Cart Items ({cart.reduce((acc, item) => acc + item.quantity, 0)})</CardTitle>
-                        <Button variant="destructive" size="sm" onClick={handleClearCart} disabled={cart.length === 0 || isSubmitting}>
-                            <Trash2 className="mr-2 h-4 w-4" /> Clear
-                        </Button>
-                    </CardHeader>
+                   <CardHeader className="flex-row items-center justify-between">
+  <CardTitle>Cart Items ({cart.reduce((acc, item) => acc + item.quantity, 0)})</CardTitle>
+  <div className="flex gap-2">
+    <Button 
+      variant="outline" 
+      size="sm" 
+      onClick={() => setIsFreeGiftModalOpen(true)} 
+      disabled={cart.length === 0 || isSubmitting}
+    >
+      <Gift className="mr-2 h-4 w-4" /> Free Cartons
+    </Button>
+    <Button variant="destructive" size="sm" onClick={handleClearCart} disabled={cart.length === 0 || isSubmitting}>
+      <Trash2 className="mr-2 h-4 w-4" /> Clear
+    </Button>
+  </div>
+</CardHeader>
                     <CardContent className="flex-1 flex flex-col justify-between p-4">
                         <div className="flex-1 overflow-y-auto">
 
-                           {cart.length > 0 ? cart.map(item => <CartItemView key={item.id} item={item} onRemove={handleRemoveFromCart} onQuantityChange={handleQuantityChange} />) : <EmptyCart />}
+                           {cart.length > 0 ? (
+  cart.map(item => {
+    if (item.is_freebie) {
+      return (
+        <CartItemView
+          key={item.id}
+          item={item}
+          onRemove={handleRemoveFromCart}
+          onQuantityChange={() => {}}
+          freeQty={0}
+          onFreeQuantityChange={() => {}}
+        />
+      );
+    } else {
+      return (
+        <CartItemView
+          key={item.id}
+          item={item}
+          onRemove={handleRemoveFromCart}
+          onQuantityChange={handleQuantityChange}
+          freeQty={getFreeQuantity(item.id)}
+          onFreeQuantityChange={handleFreeQuantityChange}
+        />
+      );
+    }
+  })
+) : (
+  <EmptyCart />
+)}
 
+
+
+                          <FreeGiftModal
+  isOpen={isFreeGiftModalOpen}
+  onClose={() => setIsFreeGiftModalOpen(false)}
+  items={items} // all products
+  onAddFreeItems={addFreeItems}
+/>
                         </div>
                         <div>
                           <Separator className="my-4" />
